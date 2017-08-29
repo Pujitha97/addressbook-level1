@@ -66,6 +66,9 @@ public class AddressBook {
      * =========================================================================
      */
     private static final String MESSAGE_ADDED = "New person added: %1$s, Phone: %2$s, Email: %3$s";
+
+    private static final String MESSAGE_UPDATED = "Updated to person: %1$s, Phone: %2$s, Email: %3$s";
+
     private static final String MESSAGE_ADDRESSBOOK_CLEARED = "Address book has been cleared!";
     private static final String MESSAGE_COMMAND_HELP = "%1$s: %2$s";
     private static final String MESSAGE_COMMAND_HELP_PARAMETERS = "\tParameters: %1$s";
@@ -105,6 +108,15 @@ public class AddressBook {
                                                       + PERSON_DATA_PREFIX_EMAIL + "EMAIL";
     private static final String COMMAND_ADD_EXAMPLE = COMMAND_ADD_WORD + " John Doe p/98765432 e/johnd@gmail.com";
 
+
+    /* Allows user to update existing entry in address book */
+    private static final String COMMAND_UPDATE_WORD = "update";
+    private static final String COMMAND_UPDATE_DESC = "Updates an existing entry by the index number used in "
+                                                    + "the last find/list call.";
+    private static final String COMMAND_UPDATE_PARAMETERS = "INDEX " ;
+    private static final String COMMAND_UPDATE_EXAMPLE = COMMAND_UPDATE_WORD + " 1" ;
+
+
     private static final String COMMAND_FIND_WORD = "find";
     private static final String COMMAND_FIND_DESC = "Finds all persons whose names contain any of the specified "
                                         + "keywords (case-sensitive) and displays them as a list with index numbers.";
@@ -132,6 +144,7 @@ public class AddressBook {
     private static final String COMMAND_EXIT_WORD = "exit";
     private static final String COMMAND_EXIT_DESC = "Exits the program.";
     private static final String COMMAND_EXIT_EXAMPLE = COMMAND_EXIT_WORD;
+
 
     private static final String DIVIDER = "===================================================";
 
@@ -371,6 +384,8 @@ public class AddressBook {
         switch (commandType) {
         case COMMAND_ADD_WORD:
             return executeAddPerson(commandArgs);
+        case COMMAND_UPDATE_WORD:
+            return executeUpdatePerson(commandArgs);
         case COMMAND_FIND_WORD:
             return executeFindPersons(commandArgs);
         case COMMAND_LIST_WORD:
@@ -556,6 +571,101 @@ public class AddressBook {
      */
     private static String getMessageForSuccessfulDelete(String[] deletedPerson) {
         return String.format(MESSAGE_DELETE_PERSON_SUCCESS, getMessageForFormattedPersonData(deletedPerson));
+    }
+
+    /**
+     * Updates person identified using last displayed index.
+     *
+     * @param commandArgs full command args string from the user
+     * @return feedback display message for the operation result
+     */
+    private static String executeUpdatePerson(String commandArgs)
+    {
+        if (!isDeletePersonArgsValid(commandArgs)) {
+            return getMessageForInvalidCommandInput(COMMAND_UPDATE_WORD, getUsageInfoForUpdateCommand());
+        }
+
+        final int targetVisibleIndex = extractTargetIndexFromDeletePersonArgs(commandArgs);
+
+        if (!isDisplayIndexValidForLastPersonListingView(targetVisibleIndex)) {
+            return MESSAGE_INVALID_PERSON_DISPLAYED_INDEX;
+        }
+
+        final String[] targetInModel = getPersonByLastVisibleIndex(targetVisibleIndex);
+
+        ChooseUpdateMethod(SelectUpdateAction() , targetInModel , targetVisibleIndex);
+
+     return getMessageForSuccessfulUpdatePerson(targetInModel);
+    }
+
+    private static String SelectUpdateAction() {
+
+        System.out.print(LINE_PREFIX + "Enter 1 to update name , 2 to update phone no and 3 to update email: ");
+        String inputLine = SCANNER.nextLine();
+        // silently consume all blank and comment lines
+        while (inputLine.trim().isEmpty() || inputLine.trim().charAt(0) == INPUT_COMMENT_MARKER) {
+            inputLine = SCANNER.nextLine();
+        }
+
+        System.out.println("[Action chosen:" + inputLine + "]");
+        return inputLine;
+    }
+
+    private static void ChooseUpdateMethod(String inputLine , String[] targetInModel, int targetVisibleIndex )
+    {
+        System.out.println("Going to update the below person's entry ");
+        final String decodedString = getIndexedPersonListElementMessage(targetVisibleIndex, targetInModel);
+        System.out.println(decodedString);
+
+        switch (inputLine){
+            case "1":
+                System.out.println("Enter new name " ) ;
+                String newname = SCANNER.nextLine();
+                // silently consume all blank and comment lines
+                while (newname.trim().isEmpty() || newname.trim().charAt(0) == INPUT_COMMENT_MARKER) {
+                    newname = SCANNER.nextLine();
+                }
+                targetInModel[PERSON_DATA_INDEX_NAME] = newname.trim();
+                System.out.println("The name has been replaced with " + targetInModel[PERSON_DATA_INDEX_NAME]);
+                break;
+
+            case "2":
+                System.out.println("Enter new phone no without prefix " ) ;
+                String newphoneno = SCANNER.nextLine();
+                // silently consume all blank and comment lines
+                while (newphoneno.trim().isEmpty() || newphoneno.trim().charAt(0) == INPUT_COMMENT_MARKER) {
+                    newphoneno = SCANNER.nextLine();
+                }
+
+                targetInModel[PERSON_DATA_INDEX_PHONE] = newphoneno.trim();
+                System.out.println("The phone no has been replaced with " + targetInModel[PERSON_DATA_INDEX_PHONE]);
+                break;
+
+            case "3":
+                System.out.println("Enter new email without prefix " ) ;
+                String newemail = SCANNER.nextLine();
+                // silently consume all blank and comment lines
+                while (newemail.trim().isEmpty() || newemail.trim().charAt(0) == INPUT_COMMENT_MARKER) {
+                    newemail = SCANNER.nextLine();
+                }
+
+                targetInModel[PERSON_DATA_INDEX_EMAIL] = newemail.trim();
+                System.out.println("The email has been replaced with " + targetInModel[PERSON_DATA_INDEX_EMAIL]);
+                break;
+
+            default:
+                ChooseUpdateMethod(SelectUpdateAction() , targetInModel , targetVisibleIndex);
+
+                break ;
+        }
+
+        addPersonToAddressBook(targetInModel);
+        executeDeletePerson(Integer.toString(targetVisibleIndex));
+    }
+
+    private static String getMessageForSuccessfulUpdatePerson(String[] addedPerson) {
+        return String.format(MESSAGE_UPDATED,
+                getNameFromPerson(addedPerson), getPhoneFromPerson(addedPerson), getEmailFromPerson(addedPerson));
     }
 
     /**
@@ -918,6 +1028,7 @@ public class AddressBook {
     private static Optional<String[]> decodePersonFromString(String encoded) {
         // check that we can extract the parts of a person from the encoded string
         if (!isPersonDataExtractableFrom(encoded)) {
+            System.out.println("Not extractable");
             return Optional.empty();
         }
         final String[] decodedPerson = makePersonFromData(
@@ -926,6 +1037,7 @@ public class AddressBook {
                 extractEmailFromPersonString(encoded)
         );
         // check that the constructed person is valid
+        //System.out.println("decodedPerson =   " + decodedPerson);
         return isPersonDataValid(decodedPerson) ? Optional.of(decodedPerson) : Optional.empty();
     }
 
@@ -956,7 +1068,9 @@ public class AddressBook {
      */
     private static boolean isPersonDataExtractableFrom(String personData) {
         final String matchAnyPersonDataPrefix = PERSON_DATA_PREFIX_PHONE + '|' + PERSON_DATA_PREFIX_EMAIL;
+        //System.out.println("matchAnyPersonDataPrefix=   " + matchAnyPersonDataPrefix);
         final String[] splitArgs = personData.trim().split(matchAnyPersonDataPrefix);
+        //System.out.println("splitArgs =   " + splitArgs);
         return splitArgs.length == 3 // 3 arguments
                 && !splitArgs[0].isEmpty() // non-empty arguments
                 && !splitArgs[1].isEmpty()
@@ -1085,6 +1199,7 @@ public class AddressBook {
         return getUsageInfoForAddCommand() + LS
                 + getUsageInfoForFindCommand() + LS
                 + getUsageInfoForViewCommand() + LS
+                + getUsageInfoForUpdateCommand() + LS
                 + getUsageInfoForDeleteCommand() + LS
                 + getUsageInfoForClearCommand() + LS
                 + getUsageInfoForExitCommand() + LS
@@ -1112,6 +1227,12 @@ public class AddressBook {
                 + String.format(MESSAGE_COMMAND_HELP_EXAMPLE, COMMAND_DELETE_EXAMPLE) + LS;
     }
 
+    /** Returns the string for showing 'update' command usage instruction */
+    private static String getUsageInfoForUpdateCommand() {
+        return String.format(MESSAGE_COMMAND_HELP, COMMAND_UPDATE_WORD, COMMAND_UPDATE_DESC) + LS
+                + String.format(MESSAGE_COMMAND_HELP_PARAMETERS, COMMAND_UPDATE_PARAMETERS) + LS
+                + String.format(MESSAGE_COMMAND_HELP_EXAMPLE, COMMAND_UPDATE_EXAMPLE) + LS;
+    }
     /** Returns string for showing 'clear' command usage instruction */
     private static String getUsageInfoForClearCommand() {
         return String.format(MESSAGE_COMMAND_HELP, COMMAND_CLEAR_WORD, COMMAND_CLEAR_DESC) + LS
