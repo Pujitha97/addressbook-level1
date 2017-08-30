@@ -597,7 +597,11 @@ public class AddressBook {
 
      return getMessageForSuccessfulUpdatePerson(targetInModel);
     }
-
+    /*
+     * Allows user to choose either of 3 actions to update entry in the addressbook
+     *
+     * @param void
+     * @return Integer containing the type of action to be performed*/
     private static String SelectUpdateAction() {
 
         System.out.print(LINE_PREFIX + "Enter 1 to update name , 2 to update phone no and 3 to update email: ");
@@ -611,6 +615,12 @@ public class AddressBook {
         return inputLine;
     }
 
+    /*
+     * Allows user to update the addressbook depending on the type of action chosen by user
+     *
+     * @param inputLine - number denoting action , targetInModel - person object to be updated ,
+     * targetVisibleIndex - index of relevant person in addressbook
+     * @return Integer containing the type of action to be performed*/
     private static void ChooseUpdateMethod(String inputLine , String[] targetInModel, int targetVisibleIndex )
     {
         System.out.println("Going to update the below person's entry ");
